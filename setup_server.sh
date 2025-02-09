@@ -42,7 +42,7 @@ apt-get install -y python3 python3-pip python3-venv ffmpeg git chromium-browser
 
 # Create required directories
 print_message "Creating required directories..."
-mkdir -p data/{audio,video,json,temp} logs config tn
+mkdir -p data/{audio,video,json,temp} logs config/credentials tn
 
 # Set up virtual environment
 print_message "Setting up virtual environment..."
@@ -53,19 +53,28 @@ pip install -r requirements.txt
 
 # Copy configuration files
 print_message "Setting up configuration..."
+
+# Create credentials directory
+mkdir -p config/credentials
+
+if [ ! -f "config/credentials/client_secrets.json" ]; then
+    print_message "Creating empty client_secrets.json..."
+    touch config/credentials/client_secrets.json
+fi
+
+if [ ! -f "config/credentials/socials-1731059809421-acd5f79c7acb.json" ]; then
+    print_message "Creating empty service account key file..."
+    touch config/credentials/socials-1731059809421-acd5f79c7acb.json
+fi
+
 if [ ! -f "config/production.env" ]; then
-    print_warning "Please create config/production.env with your settings"
+    print_message "Creating empty production.env..."
     touch config/production.env
 fi
 
 if [ ! -f "config/serials_config.json" ]; then
-    print_warning "Please create config/serials_config.json with your serial configurations"
+    print_message "Creating empty serials_config.json..."
     touch config/serials_config.json
-fi
-
-if [ ! -f "client_secrets.json" ]; then
-    print_warning "Please place your client_secrets.json file in the project root"
-    touch client_secrets.json
 fi
 
 # Set proper permissions
@@ -74,7 +83,7 @@ chown -R telugu-automation:telugu-automation /opt/telugu-automation
 chmod -R 750 /opt/telugu-automation
 chmod -R 770 /opt/telugu-automation/{logs,data,tn}
 chmod 640 /opt/telugu-automation/config/*.{env,json}
-chmod 640 /opt/telugu-automation/client_secrets.json
+chmod -R 640 /opt/telugu-automation/config/credentials/*.json
 
 # Install and enable systemd service
 print_message "Installing systemd service..."
@@ -95,7 +104,7 @@ fi
 
 print_message "Setup complete! Please check the following:"
 print_warning "1. Configure config/production.env with your settings"
-print_warning "2. Place your client_secrets.json file in the project root"
+print_warning "2. Place your client_secrets.json file in config/credentials/"
 print_warning "3. Configure config/serials_config.json with your serial details"
 print_warning "4. Check logs at /opt/telugu-automation/logs/application.log"
 

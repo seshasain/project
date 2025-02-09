@@ -48,6 +48,20 @@ else
     cd "$TARGET_DIR"
 fi
 
+# Copy credential files if they exist in the current directory
+print_message "Checking for credential files..."
+mkdir -p config/credentials
+
+if [ -f "client_secrets.json" ]; then
+    print_message "Found client_secrets.json, copying to config/credentials/"
+    cp client_secrets.json config/credentials/
+fi
+
+if [ -f "socials-1731059809421-acd5f79c7acb.json" ]; then
+    print_message "Found service account key file, copying to config/credentials/"
+    cp socials-1731059809421-acd5f79c7acb.json config/credentials/
+fi
+
 # Run the setup script
 print_message "Running setup script..."
 bash setup_server.sh
