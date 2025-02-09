@@ -1,0 +1,24 @@
+{
+  "target_serials": {
+    "Brahmamudi": "brahmamudi",
+    "Karthika Deepam": "karthika-deepam",
+    "Illu Illalu Pillalu": "illu-illalu-pillalu"
+  },
+  "serials": {
+    "brahmamudi": {
+      "url_pattern": "brahmamudi",
+      "title_pattern": "Brahmamudi",
+      "hotstar_url": "https://www.hotstar.com/in/shows/brahma-mudi/1260129377"
+    },
+    "karthika-deepam": {
+      "url_pattern": "karthika-deepam",
+      "title_pattern": "Karthika Deepam",
+      "hotstar_url": "https://www.hotstar.com/in/shows/karthika-deepam/15457"
+    },
+    "illu-illalu-pillalu": {
+      "url_pattern": "illu-illalu-pillalu",
+      "title_pattern": "Illu Illalu Pillalu",
+      "hotstar_url": "https://www.hotstar.com/in/shows/illu-illalu-pillalu/1271339098"
+    }
+  }
+} 
