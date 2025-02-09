@@ -42,9 +42,6 @@ def main():
         logger.info("Starting Telugu Serial Automation...")
         processor = SerialProcessor()
         processor.check_serials()
-        while True:
-            time.sleep(60)  # Sleep for 1 minute
-            processor.check_serials()
         
         return 0
         
