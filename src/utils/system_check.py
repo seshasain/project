@@ -83,7 +83,7 @@ class SystemChecker:
     def check_ffmpeg(self) -> bool:
         """Check FFmpeg version and capabilities."""
         try:
-            result = subprocess.run(['ffmpeg', '-version'], 
+            result = subprocess.run(["ffmpeg", "-codecs"], 
                                  capture_output=True, 
                                  text=True)
             
@@ -95,7 +95,7 @@ class SystemChecker:
             if 'libx264' not in result.stdout:
                 self.issues.append("FFmpeg missing libx264 support")
             
-            if 'aac' not in result.stdout:
+            if not any(x in result.stdout.lower() for x in ["aac", "libfdk_aac"]):
                 self.issues.append("FFmpeg missing AAC support")
                 
         except Exception as e:

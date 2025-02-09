@@ -17,7 +17,7 @@ logging.basicConfig(
     ]
 )
 
-class SerialProcessor:
+class SerialScheduler:
     def __init__(self):
         self.scraper = HTScraper()
         self.processed_serials = set()
@@ -155,13 +155,13 @@ def main():
     os.makedirs('data/json', exist_ok=True)
     os.makedirs('data/audio', exist_ok=True)
     
-    processor = SerialProcessor()
+    scheduler = SerialScheduler()
     
     # Schedule the job to run every 10 minutes
-    schedule.every(10).minutes.do(processor.check_serials)
+    schedule.every(10).minutes.do(scheduler.check_serials)
     
     # Run immediately on start
-    processor.check_serials()
+    scheduler.check_serials()
     
     # Keep the script running
     while True:
