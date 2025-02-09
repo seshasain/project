@@ -8,7 +8,7 @@ User=telugu-automation
 Group=telugu-automation
 WorkingDirectory=/opt/telugu-automation
 Environment=PYTHONPATH=/opt/telugu-automation
-ExecStart=/opt/telugu-automation/venv/bin/python src/run.py
+ExecStart=/opt/telugu-automation/venv/bin/python src/scheduler/main_scheduler.py
 Restart=always
 RestartSec=10
 
