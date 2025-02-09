@@ -147,7 +147,7 @@ class YouTubeUploader:
                     title: str, 
                     description: str,
                     tags: list = None,
-                    privacy_status: str = 'public',
+                    privacy_status: str = 'private',
                     made_for_kids: bool = False,
                     serial_name: str = None,
                     episode_title: str = None) -> str:
