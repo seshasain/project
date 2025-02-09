@@ -42,7 +42,11 @@ Thumbs.db
 
 # Application Specific
 client_secrets.json
+**/client_secrets.json
+config/credentials/*.json
 token.pickle
+*.credentials.json
+**/credentials/
 *.mp4
 *.mp3
 *.jpg

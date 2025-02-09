@@ -50,7 +50,7 @@ print_message "Cloning repository..."
 if [ -d ".git" ]; then
     git pull
 else
-    git clone https://github.com/yourusername/telugu-serial-automation.git .
+    git clone https://github.com/seshasain/project.git .
 fi
 
 # Create required directories
