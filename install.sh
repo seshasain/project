@@ -35,7 +35,7 @@ if ! command -v git &> /dev/null; then
 fi
 
 # Clone the repository
-REPO_URL="https://github.com/yourusername/telugu-serial-automation.git"
+REPO_URL="https://github.com/seshasain/project.git"
 TARGET_DIR="/opt/telugu-automation"
 
 if [ -d "$TARGET_DIR" ]; then

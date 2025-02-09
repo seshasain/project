@@ -40,19 +40,6 @@ print_message "Updating system and installing dependencies..."
 apt-get update
 apt-get install -y python3 python3-pip python3-venv ffmpeg git chromium-browser
 
-# Create project directory
-print_message "Creating project directory..."
-mkdir -p /opt/telugu-automation
-cd /opt/telugu-automation
-
-# Clone repository
-print_message "Cloning repository..."
-if [ -d ".git" ]; then
-    git pull
-else
-    git clone https://github.com/seshasain/project.git .
-fi
-
 # Create required directories
 print_message "Creating required directories..."
 mkdir -p data/{audio,video,json,temp} logs config tn
