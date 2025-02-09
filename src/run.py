@@ -5,12 +5,14 @@ Performs system checks and starts the scheduler.
 
 import os
 import sys
+import schedule
+import time
 import time
 import logging
 import structlog
 from dotenv import load_dotenv
 from utils.system_check import verify_system
-from scheduler.serial_scheduler import SerialScheduler
+from scheduler.main_scheduler import SerialProcessor
 
 # Configure structured logging
 logging.basicConfig(
@@ -38,11 +40,11 @@ def main():
             
         # Initialize and start the scheduler
         logger.info("Starting Telugu Serial Automation...")
-        scheduler = SerialScheduler()
-        scheduler.check_serials()
+        processor = SerialProcessor()
+        processor.check_serials()
         while True:
             time.sleep(60)  # Sleep for 1 minute
-            scheduler.check_serials()
+            processor.check_serials()
         
         return 0
         

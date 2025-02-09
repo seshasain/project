@@ -113,7 +113,7 @@ class SerialScheduler:
                 
                 # Run t.py with specific JSON file and output MP3 name
                 subprocess.run([
-                    'python', 'src/audio/t.py',
+                    sys.executable, os.path.join('src', 'audio', 'text_to_speech.py'),
                     '--input', json_file,
                     '--output', output_mp3
                 ], check=True)
