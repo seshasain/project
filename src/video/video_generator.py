@@ -103,8 +103,8 @@ VIDEO_SETTINGS = {
     'CRF': 30,  # Even lower quality for faster encoding
     'AUDIO_BITRATE': '64k',  # Minimal bitrate
     'PRESET': 'ultrafast',  # Fastest preset
-    'CHUNK_DURATION': 20,  # Even smaller chunks
-    'MAX_CHUNKS': 30,  # More chunks but smaller
+    'CHUNK_DURATION': 10,  # Smaller chunks (10 seconds)
+    'MAX_CHUNKS': 60,  # More chunks but smaller
     'MAX_THREADS': 2,  # Match server's vCPU count
     'MEMORY_LIMIT': '512M'  # Limit memory usage per FFmpeg process
 }
@@ -364,7 +364,7 @@ def process_video_chunk(
         )
         
         start_time = time.time()
-        timeout = duration * 3  # Increased timeout to 3x duration
+        timeout = max(duration * 5, 120)  # At least 120 seconds or 5x duration
         last_progress_time = time.time()
         last_resource_check = time.time()
         
@@ -381,8 +381,8 @@ def process_video_chunk(
                 return False
                 
             # Check for stall
-            if current_time - last_progress_time > 30:
-                logger.error(f"Chunk {chunk_index + 1} processing stalled - no progress for 30 seconds")
+            if current_time - last_progress_time > 60:  # Increased stall detection to 60 seconds
+                logger.error(f"Chunk {chunk_index + 1} processing stalled - no progress for 60 seconds")
                 # Log system resources when stalled
                 log_system_resources()
                 process.kill()
