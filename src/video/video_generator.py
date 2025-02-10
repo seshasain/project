@@ -97,14 +97,14 @@ def get_audio_duration(audio_path: str) -> float:
 
 # Constants
 VIDEO_SETTINGS = {
-    'WIDTH': 480,  # Even lower resolution for faster processing
-    'HEIGHT': 270,
-    'FPS': 15,  # Lower FPS for faster processing
-    'CRF': 35,  # Even lower quality for faster encoding
-    'AUDIO_BITRATE': '48k',  # Minimal bitrate
+    'WIDTH': 640,  # 360p resolution for faster processing
+    'HEIGHT': 360,
+    'FPS': 24,
+    'CRF': 30,  # Even lower quality for faster encoding
+    'AUDIO_BITRATE': '64k',  # Minimal bitrate
     'PRESET': 'ultrafast',  # Fastest preset
-    'CHUNK_DURATION': 5,  # Even smaller chunks (5 seconds)
-    'MAX_CHUNKS': 120,  # More chunks but smaller
+    'CHUNK_DURATION': 10,  # Smaller chunks (10 seconds)
+    'MAX_CHUNKS': 60,  # More chunks but smaller
     'MAX_THREADS': 2  # Match server's vCPU count
 }
 
@@ -362,7 +362,7 @@ def process_video_chunk(
         )
         
         start_time = time.time()
-        timeout = max(duration * 10, 300)  # At least 300 seconds or 10x duration
+        timeout = max(duration * 5, 120)  # At least 120 seconds or 5x duration
         last_progress_time = time.time()
         last_resource_check = time.time()
         
@@ -379,8 +379,8 @@ def process_video_chunk(
                 return False
                 
             # Check for stall
-            if current_time - last_progress_time > 120:  # Increased stall detection to 120 seconds
-                logger.error(f"Chunk {chunk_index + 1} processing stalled - no progress for 120 seconds")
+            if current_time - last_progress_time > 60:  # Increased stall detection to 60 seconds
+                logger.error(f"Chunk {chunk_index + 1} processing stalled - no progress for 60 seconds")
                 # Log system resources when stalled
                 log_system_resources()
                 process.kill()
