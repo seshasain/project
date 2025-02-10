@@ -21,6 +21,7 @@ from tqdm import tqdm
 import time
 import tempfile
 import requests
+import psutil
 from typing import Optional, Tuple, List
 import math
 from ..scrapers.hotstar_thumbs import get_serial_episode_thumbnail
@@ -31,6 +32,16 @@ logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s'
 )
+
+def log_system_resources():
+    """Log current system resource usage"""
+    try:
+        cpu_percent = psutil.cpu_percent(interval=1)
+        memory = psutil.virtual_memory()
+        disk = psutil.disk_usage('/')
+        logging.info(f"System Resources - CPU: {cpu_percent}%, Memory Used: {memory.percent}%, Disk Used: {disk.percent}%")
+    except Exception as e:
+        logging.error(f"Failed to get system resources: {e}")
 
 def get_audio_duration(audio_path: str) -> float:
     """
@@ -277,13 +288,19 @@ def process_video_chunk(
     progress = None
     
     try:
-        logger.info(f"Processing chunk {chunk_index + 1}/{total_chunks}")
+        # Log system resources before starting
+        log_system_resources()
+        logger.info(f"Starting to process chunk {chunk_index + 1}/{total_chunks}")
+        logger.info(f"Input paths - Audio: {audio_chunk}, Image: {image_path}, Output: {output_path}")
+        
         duration = get_audio_duration(audio_chunk)
+        logger.info(f"Chunk duration: {duration}s")
         
         # Find available system font
         try:
             font_path = find_system_font()
             TEXT_SETTINGS['FONT'] = font_path
+            logger.info(f"Using font: {font_path}")
         except FileNotFoundError as e:
             logger.warning(f"Warning: {e}. Using default font.")
         
@@ -295,43 +312,26 @@ def process_video_chunk(
                 disc_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'bg.jpg')
         else:
             disc_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'bg.jpg')
-            
+        
+        logger.info(f"Using disc image: {disc_path}")
         if not os.path.exists(disc_path):
             logger.error(f"Disc image not found at {disc_path}")
             return False
             
-        # Define progress stages for this chunk
-        stages = [
-            ("Setting up filters", 10),
-            ("Preparing command", 10),
-            ("Encoding chunk", 80)
-        ]
-        total_progress = sum(weight for _, weight in stages)
-        
-        # Initialize progress tracking
-        progress = tqdm(
-            total=total_progress,
-            desc=f"Chunk {chunk_index + 1}/{total_chunks}: {stages[0][0]}",
-            unit="%",
-            position=chunk_index
-        )
-        
         # Create filter chain
+        logger.info("Creating filter chain...")
         filter_chain = create_filter_chain(serial_name, duration)
         filter_complex = ';'.join(filter_chain)
+        logger.debug(f"Filter complex: {filter_complex}")
         
-        # Update progress
-        progress.update(10)
-        progress.set_description(f"Chunk {chunk_index + 1}/{total_chunks}: {stages[1][0]}")
-        
-        # Construct FFmpeg command with disc_path as input 0 and image_path as input 2
+        # Construct FFmpeg command
         cmd = [
             'ffmpeg', '-y',
             '-loop', '1',
-            '-i', disc_path,  # Input 0: Rotating disc image (serial-specific from tn folder)
-            '-i', audio_chunk,  # Input 1: Audio
+            '-i', disc_path,
+            '-i', audio_chunk,
             '-loop', '1',
-            '-i', image_path,  # Input 2: Background image (Hotstar thumbnail)
+            '-i', image_path,
             '-filter_complex', filter_complex,
             '-map', '[out]',
             '-map', '1:a',
@@ -345,9 +345,7 @@ def process_video_chunk(
             output_path
         ]
         
-        # Update progress
-        progress.update(10)
-        progress.set_description(f"Chunk {chunk_index + 1}/{total_chunks}: {stages[2][0]}")
+        logger.info(f"FFmpeg command: {' '.join(cmd)}")
         
         # Run FFmpeg command with timeout and stall detection
         process = subprocess.Popen(
@@ -358,47 +356,63 @@ def process_video_chunk(
         )
         
         start_time = time.time()
-        timeout = duration * 2  # 2x the expected duration
+        timeout = duration * 3  # Increased timeout to 3x duration
         last_progress_time = time.time()
+        last_resource_check = time.time()
         
         while True:
             if process.poll() is not None:
                 break
                 
-            if time.time() - start_time > timeout:
-                logger.error(f"Chunk {chunk_index + 1} processing timed out")
+            current_time = time.time()
+            
+            # Check for timeout
+            if current_time - start_time > timeout:
+                logger.error(f"Chunk {chunk_index + 1} processing timed out after {timeout} seconds")
                 process.kill()
                 return False
                 
-            if time.time() - last_progress_time > 30:
-                logger.error(f"Chunk {chunk_index + 1} processing stalled")
+            # Check for stall
+            if current_time - last_progress_time > 30:
+                logger.error(f"Chunk {chunk_index + 1} processing stalled - no progress for 30 seconds")
+                # Log system resources when stalled
+                log_system_resources()
                 process.kill()
                 return False
                 
+            # Log system resources every 60 seconds
+            if current_time - last_resource_check > 60:
+                log_system_resources()
+                last_resource_check = current_time
+                
+            # Read FFmpeg output
             line = process.stderr.readline()
             if not line:
                 time.sleep(0.1)
                 continue
                 
+            # Log FFmpeg progress
             if "time=" in line:
                 try:
                     time_str = line.split("time=")[1].split()[0]
                     current_time = sum(float(x) * 60 ** i for i, x in enumerate(reversed(time_str.split(":"))))
-                    progress_percent = min(80, int((current_time / duration) * 80))
-                    progress.update(progress_percent - progress.n + 20)
+                    progress_percent = min(100, int((current_time / duration) * 100))
+                    logger.info(f"Chunk {chunk_index + 1} progress: {progress_percent}% (time: {time_str})")
                     last_progress_time = time.time()
-                    logger.debug(f"Chunk {chunk_index + 1} progress: {progress_percent}%")
-                except:
-                    pass
+                except Exception as e:
+                    logger.error(f"Error parsing FFmpeg progress: {e}")
                     
+        # Get final status
         return_code = process.wait()
+        stderr_output = process.stderr.read() if process.stderr else ""
         
         if return_code != 0:
-            stderr_output = process.stderr.read()
-            logger.error(f"FFmpeg Error in chunk {chunk_index + 1} (return code {return_code}):\n{stderr_output}")
+            logger.error(f"FFmpeg Error in chunk {chunk_index + 1} (return code {return_code}):")
+            logger.error(f"FFmpeg stderr: {stderr_output}")
             return False
             
-        progress.update(total_progress - progress.n)
+        # Log final system resources
+        log_system_resources()
         logger.info(f"Chunk {chunk_index + 1}/{total_chunks} processed successfully")
         return True
         
