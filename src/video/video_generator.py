@@ -97,20 +97,20 @@ def get_audio_duration(audio_path: str) -> float:
 
 # Constants
 VIDEO_SETTINGS = {
-    'WIDTH': 1280,  # Changed from 1920 to 1280 (720p)
-    'HEIGHT': 720,  # Changed from 1080 to 720
-    'FPS': 30,
-    'CRF': 20,  # Slightly adjusted for 720p
-    'AUDIO_BITRATE': '192k',  # Adjusted for 720p
-    'PRESET': 'medium',  # Changed from slow to medium for faster encoding
-    'CHUNK_DURATION': 120,  # Process in 2-minute chunks
-    'MAX_CHUNKS': 5  # Maximum number of chunks to process
+    'WIDTH': 1280,  # 720p resolution
+    'HEIGHT': 720,
+    'FPS': 24,
+    'CRF': 23,  # Slightly lower quality but faster encoding
+    'AUDIO_BITRATE': '128k',  # Lower bitrate
+    'PRESET': 'veryfast',  # Much faster encoding
+    'CHUNK_DURATION': 60,  # Smaller chunks (1 minute each)
+    'MAX_CHUNKS': 10  # Allow more chunks but smaller
 }
 
 VISUALIZER_SETTINGS = {
-    'SIZE': 600,  # Reduced from 800 to fit 720p better
-    'CENTER': 300,  # Adjusted center point (SIZE/2)
-    'RADIUS': 250,  # Adjusted radius for new size
+    'SIZE': 600,
+    'CENTER': 300,
+    'RADIUS': 250,
     'WAVE_COLOR': 'white'
 }
 
@@ -291,44 +291,17 @@ def process_video_chunk(
         # Log system resources before starting
         log_system_resources()
         logger.info(f"Starting to process chunk {chunk_index + 1}/{total_chunks}")
-        logger.info(f"Input paths - Audio: {audio_chunk}, Image: {image_path}, Output: {output_path}")
         
-        duration = get_audio_duration(audio_chunk)
-        logger.info(f"Chunk duration: {duration}s")
+        # Add nice level to reduce CPU priority
+        os.nice(10)
         
-        # Find available system font
-        try:
-            font_path = find_system_font()
-            TEXT_SETTINGS['FONT'] = font_path
-            logger.info(f"Using font: {font_path}")
-        except FileNotFoundError as e:
-            logger.warning(f"Warning: {e}. Using default font.")
-        
-        # Get disc image path from tn folder using serial name
-        if serial_name:
-            disc_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'tn', f"{serial_name}.webp")
-            if not os.path.exists(disc_path):
-                logger.warning(f"Serial-specific disc image not found at {disc_path}, falling back to bg.jpg")
-                disc_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'bg.jpg')
-        else:
-            disc_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'bg.jpg')
-        
-        logger.info(f"Using disc image: {disc_path}")
-        if not os.path.exists(disc_path):
-            logger.error(f"Disc image not found at {disc_path}")
-            return False
-            
-        # Create filter chain
-        logger.info("Creating filter chain...")
-        filter_chain = create_filter_chain(serial_name, duration)
-        filter_complex = ';'.join(filter_chain)
-        logger.debug(f"Filter complex: {filter_complex}")
-        
-        # Construct FFmpeg command
+        # Construct FFmpeg command with resource limits
         cmd = [
+            'nice', '-n', '10',  # Lower CPU priority
             'ffmpeg', '-y',
+            '-thread_queue_size', '512',  # Increase queue size
             '-loop', '1',
-            '-i', disc_path,
+            '-i', image_path,
             '-i', audio_chunk,
             '-loop', '1',
             '-i', image_path,
@@ -342,17 +315,19 @@ def process_video_chunk(
             '-b:a', VIDEO_SETTINGS['AUDIO_BITRATE'],
             '-shortest',
             '-pix_fmt', 'yuv420p',
+            '-threads', '1',  # Limit to one thread
             output_path
         ]
         
         logger.info(f"FFmpeg command: {' '.join(cmd)}")
         
-        # Run FFmpeg command with timeout and stall detection
+        # Run FFmpeg with resource limits
         process = subprocess.Popen(
             cmd,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
-            universal_newlines=True
+            universal_newlines=True,
+            preexec_fn=lambda: os.nice(10)  # Set nice level for child process
         )
         
         start_time = time.time()
