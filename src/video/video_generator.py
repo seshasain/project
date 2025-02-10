@@ -24,6 +24,7 @@ import requests
 from typing import Optional, Tuple, List
 import math
 from ..scrapers.hotstar_thumbs import get_serial_episode_thumbnail
+from pathlib import Path
 
 # Configure logging
 logging.basicConfig(
@@ -585,3 +586,132 @@ def cleanup_temp_files(file_paths: List[str]) -> None:
                 os.remove(file_path)
         except Exception as e:
             logger.warning(f"Failed to delete temporary file {file_path}: {e}")
+
+def process_video_chunks(chunks, output_dir, thumbnail_path, bg_path):
+    """Process video chunks with progress bar."""
+    try:
+        total_chunks = len(chunks)
+        with tqdm(total=total_chunks, desc="Processing video chunks", unit="chunk") as pbar:
+            for i, chunk in enumerate(chunks, 1):
+                logging.info(f"Processing chunk {i}/{total_chunks}")
+                output_path = output_dir / f"output_chunk_{i-1}.mp4"
+                
+                # Start FFmpeg process
+                cmd = construct_ffmpeg_command(chunk, output_path, thumbnail_path, bg_path)
+                process = subprocess.Popen(
+                    cmd,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    universal_newlines=True
+                )
+                
+                # Monitor FFmpeg progress
+                while process.poll() is None:
+                    time.sleep(1)
+                    if process.stderr:
+                        line = process.stderr.readline()
+                        if "time=" in line:
+                            # Update progress bar description with current time
+                            try:
+                                time_str = line.split("time=")[1].split()[0]
+                                pbar.set_description(f"Processing chunk {i}/{total_chunks} (Time: {time_str})")
+                            except:
+                                pass
+                
+                # Check if process completed successfully
+                if process.returncode != 0:
+                    error_output = process.stderr.read() if process.stderr else "Unknown error"
+                    logging.error(f"Failed to process chunk {i}/{total_chunks}")
+                    logging.error(f"FFmpeg error: {error_output}")
+                    raise Exception(f"FFmpeg failed with return code {process.returncode}")
+                
+                pbar.update(1)
+                logging.info(f"Successfully processed chunk {i}/{total_chunks}")
+        
+        return True
+    except Exception as e:
+        logging.error(f"Error in process_video_chunks: {str(e)}")
+        return False
+
+def generate_video(audio_path, thumbnail_path=None, bg_path=None, output_path=None, serial_name=None):
+    """Generate a video with audio visualization and thumbnail."""
+    try:
+        # Create temp directory for chunks
+        temp_dir = Path("data/video/temp")
+        temp_dir.mkdir(parents=True, exist_ok=True)
+        
+        # Get audio duration
+        duration = get_audio_duration(audio_path)
+        if duration is None:
+            logging.error("Could not determine audio duration")
+            return False
+            
+        logging.info(f"Audio duration: {duration}s")
+        
+        # Split audio into chunks
+        chunk_duration = 101  # seconds
+        num_chunks = math.ceil(duration / chunk_duration)
+        logging.info(f"Splitting {duration}s audio into {num_chunks} chunks of {chunk_duration}s each")
+        
+        chunks = []
+        with tqdm(total=num_chunks, desc="Creating audio chunks", unit="chunk") as pbar:
+            for i in range(num_chunks):
+                start_time = i * chunk_duration
+                output_chunk = temp_dir / f"chunk_{i}.mp3"
+                
+                # Use FFmpeg to split audio
+                cmd = [
+                    "ffmpeg", "-y",
+                    "-i", str(audio_path),
+                    "-ss", str(start_time),
+                    "-t", str(chunk_duration),
+                    str(output_chunk)
+                ]
+                
+                logging.info(f"Creating chunk {i+1}/{num_chunks}")
+                result = subprocess.run(cmd, capture_output=True, text=True)
+                
+                if result.returncode == 0:
+                    chunks.append(output_chunk)
+                    logging.info(f"Successfully created chunk {i+1}/{num_chunks}")
+                    pbar.update(1)
+                else:
+                    logging.error(f"Failed to create chunk {i+1}/{num_chunks}")
+                    logging.error(f"FFmpeg error: {result.stderr}")
+                    return False
+        
+        # Process video chunks with progress bar
+        success = process_video_chunks(chunks, temp_dir, thumbnail_path, bg_path)
+        if not success:
+            return False
+            
+        # Combine video chunks
+        with open(temp_dir / "concat_list.txt", "w") as f:
+            for i in range(len(chunks)):
+                f.write(f"file 'output_chunk_{i}.mp4'\n")
+        
+        final_output = output_path or "output.mp4"
+        concat_cmd = [
+            "ffmpeg", "-y",
+            "-f", "concat",
+            "-safe", "0",
+            "-i", str(temp_dir / "concat_list.txt"),
+            "-c", "copy",
+            str(final_output)
+        ]
+        
+        logging.info("Combining video chunks...")
+        result = subprocess.run(concat_cmd, capture_output=True, text=True)
+        
+        if result.returncode == 0:
+            logging.info("Successfully combined video chunks")
+            cleanup_temp_files(temp_dir)
+            return True
+        else:
+            logging.error("Failed to combine video chunks")
+            logging.error(f"FFmpeg error: {result.stderr}")
+            return False
+            
+    except Exception as e:
+        logging.error(f"Error in generate_video: {str(e)}")
+        return False

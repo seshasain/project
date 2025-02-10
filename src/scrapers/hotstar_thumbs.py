@@ -62,7 +62,9 @@ def get_serial_thumbnail(url: str) -> str:
                         src = element.get_attribute('src')
                         if src:
                             logging.info(f"Found image source: {src}")
-                            if 'hotstar.com/image/upload' in src or 'hotstar.com/content' in src:
+                            if ('hotstar.com/image/upload' in src or 
+                                'hotstar.com/content' in src or 
+                                'img10.hotstar.com' in src):
                                 logging.info(f"Successfully extracted thumbnail URL using selector {selector}: {src}")
                                 return src
                 except Exception as e:
@@ -123,7 +125,9 @@ def get_episode_thumbnail(url: str, episode_title: str = None) -> str:
                         img = article.query_selector('img')
                         if img:
                             src = img.get_attribute('src')
-                            if src and ('hotstar.com/image/upload' in src or 'hotstar.com/content' in src):
+                            if src and ('hotstar.com/image/upload' in src or 
+                                      'hotstar.com/content' in src or 
+                                      'img10.hotstar.com' in src):
                                 logging.info(f"Found thumbnail for episode '{episode_title}': {src}")
                                 return src
                 except Exception as e:
@@ -146,7 +150,9 @@ def get_episode_thumbnail(url: str, episode_title: str = None) -> str:
                         src = img.get_attribute('src')
                         if src:
                             logging.info(f"Found image source: {src}")
-                            if 'hotstar.com/image/upload' in src or 'hotstar.com/content' in src:
+                            if ('hotstar.com/image/upload' in src or 
+                                'hotstar.com/content' in src or 
+                                'img10.hotstar.com' in src):
                                 article = img.evaluate('node => node.closest("article")')
                                 title = article.query_selector('h3')
                                 title_text = title.text_content() if title else "Unknown Episode"
