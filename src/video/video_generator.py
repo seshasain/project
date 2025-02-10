@@ -291,9 +291,41 @@ def process_video_chunk(
         # Log system resources before starting
         log_system_resources()
         logger.info(f"Starting to process chunk {chunk_index + 1}/{total_chunks}")
+        logger.info(f"Input paths - Audio: {audio_chunk}, Image: {image_path}, Output: {output_path}")
         
+        duration = get_audio_duration(audio_chunk)
+        logger.info(f"Chunk duration: {duration}s")
+        
+        # Find available system font
+        try:
+            font_path = find_system_font()
+            TEXT_SETTINGS['FONT'] = font_path
+            logger.info(f"Using font: {font_path}")
+        except FileNotFoundError as e:
+            logger.warning(f"Warning: {e}. Using default font.")
+        
+        # Get disc image path from tn folder using serial name
+        if serial_name:
+            disc_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'tn', f"{serial_name}.webp")
+            if not os.path.exists(disc_path):
+                logger.warning(f"Serial-specific disc image not found at {disc_path}, falling back to bg.jpg")
+                disc_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'bg.jpg')
+        else:
+            disc_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'bg.jpg')
+        
+        logger.info(f"Using disc image: {disc_path}")
+        if not os.path.exists(disc_path):
+            logger.error(f"Disc image not found at {disc_path}")
+            return False
+            
         # Add nice level to reduce CPU priority
         os.nice(10)
+        
+        # Create filter chain
+        logger.info("Creating filter chain...")
+        filter_chain = create_filter_chain(serial_name, duration)
+        filter_complex = ';'.join(filter_chain)
+        logger.debug(f"Filter complex: {filter_complex}")
         
         # Construct FFmpeg command with resource limits
         cmd = [
@@ -301,7 +333,7 @@ def process_video_chunk(
             'ffmpeg', '-y',
             '-thread_queue_size', '512',  # Increase queue size
             '-loop', '1',
-            '-i', image_path,
+            '-i', disc_path,
             '-i', audio_chunk,
             '-loop', '1',
             '-i', image_path,
