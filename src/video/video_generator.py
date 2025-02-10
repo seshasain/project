@@ -97,47 +97,46 @@ def get_audio_duration(audio_path: str) -> float:
 
 # Constants
 VIDEO_SETTINGS = {
-    'WIDTH': 640,  # 360p resolution for faster processing
-    'HEIGHT': 360,
+    'WIDTH': 426,  # 240p resolution for even faster processing
+    'HEIGHT': 240,
     'FPS': 24,
-    'CRF': 30,  # Even lower quality for faster encoding
-    'AUDIO_BITRATE': '64k',  # Minimal bitrate
+    'CRF': 35,  # Maximum compression
+    'AUDIO_BITRATE': '48k',  # Minimal bitrate
     'PRESET': 'ultrafast',  # Fastest preset
-    'CHUNK_DURATION': 20,  # Even smaller chunks
-    'MAX_CHUNKS': 30,  # More chunks but smaller
-    'MAX_THREADS': 2,  # Match server's vCPU count
-    'MEMORY_LIMIT': '512M'  # Limit memory usage per FFmpeg process
+    'CHUNK_DURATION': 15,  # Even smaller chunks
+    'MAX_CHUNKS': 40,  # More chunks but smaller
+    'MAX_THREADS': 1  # Single thread to prevent overload
 }
 
 VISUALIZER_SETTINGS = {
-    'SIZE': 300,  # Reduced for 360p
-    'CENTER': 150,
-    'RADIUS': 120,
+    'SIZE': 200,  # Reduced for 240p
+    'CENTER': 100,
+    'RADIUS': 80,
     'WAVE_COLOR': 'white'
 }
 
 DISC_SETTINGS = {
-    'SIZE': 60,  # Reduced size
-    'CENTER': 30,
-    'RADIUS': 25,
+    'SIZE': 40,  # Reduced size
+    'CENTER': 20,
+    'RADIUS': 15,
     'ROTATION_SPEED': 1.0
 }
 
 TEXT_SETTINGS = {
     'FONT': '/System/Library/Fonts/Supplemental/Verdana.ttf',
     'TITLE': {
-        'SIZE': 24,  # Reduced for 360p
-        'Y_POS': 15,
+        'SIZE': 16,  # Reduced for 240p
+        'Y_POS': 10,
         'BOX_BORDER': 1
     },
     'DATE': {
-        'SIZE': 18,
-        'Y_POS': 45,
+        'SIZE': 12,
+        'Y_POS': 30,
         'BOX_BORDER': 1
     },
     'CHANNEL': {
-        'SIZE': 30,
-        'Y_POS': 'h-25',
+        'SIZE': 20,
+        'Y_POS': 'h-20',
         'BOX_BORDER': 1
     }
 }
@@ -288,7 +287,6 @@ def process_video_chunk(
     """Process a single video chunk with progress tracking."""
     logger = logging.getLogger(__name__)
     progress = None
-    stderr_buffer = []  # Buffer to collect stderr output
     
     try:
         # Log system resources before starting
@@ -329,9 +327,9 @@ def process_video_chunk(
         
         # Construct FFmpeg command with resource limits
         cmd = [
-            'nice', '-n', '10',  # Lower CPU priority
+            'nice', '-n', '19',  # Lowest CPU priority
             'ffmpeg', '-y',
-            '-thread_queue_size', '512',  # Increase queue size
+            '-thread_queue_size', '512',
             '-loop', '1',
             '-i', disc_path,
             '-i', audio_chunk,
@@ -348,7 +346,6 @@ def process_video_chunk(
             '-shortest',
             '-pix_fmt', 'yuv420p',
             '-threads', str(VIDEO_SETTINGS['MAX_THREADS']),
-            '-memory_limit', VIDEO_SETTINGS['MEMORY_LIMIT'],  # Add memory limit
             output_path
         ]
         
@@ -360,7 +357,7 @@ def process_video_chunk(
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             universal_newlines=True,
-            preexec_fn=lambda: os.nice(10)  # Set nice level for child process
+            preexec_fn=lambda: os.nice(19)  # Set nice level for child process
         )
         
         start_time = time.time()
@@ -399,9 +396,6 @@ def process_video_chunk(
                 time.sleep(0.1)
                 continue
                 
-            # Store stderr output
-            stderr_buffer.append(line)
-                
             # Log FFmpeg progress
             if "time=" in line:
                 try:
@@ -415,15 +409,11 @@ def process_video_chunk(
                     
         # Get final status
         return_code = process.wait()
-        remaining_stderr = process.stderr.read() if process.stderr else ""
-        if remaining_stderr:
-            stderr_buffer.append(remaining_stderr)
+        stderr_output = process.stderr.read() if process.stderr else ""
         
         if return_code != 0:
             logger.error(f"FFmpeg Error in chunk {chunk_index + 1} (return code {return_code}):")
-            logger.error("FFmpeg stderr:")
-            for line in stderr_buffer:
-                logger.error(line.strip())
+            logger.error(f"FFmpeg stderr: {stderr_output}")
             return False
             
         # Log final system resources
@@ -433,10 +423,6 @@ def process_video_chunk(
         
     except Exception as e:
         logger.error(f"Error processing chunk {chunk_index + 1}: {str(e)}")
-        if stderr_buffer:
-            logger.error("FFmpeg stderr:")
-            for line in stderr_buffer:
-                logger.error(line.strip())
         return False
         
     finally:
