@@ -105,8 +105,7 @@ VIDEO_SETTINGS = {
     'PRESET': 'ultrafast',  # Fastest preset
     'CHUNK_DURATION': 10,  # Smaller chunks (10 seconds)
     'MAX_CHUNKS': 60,  # More chunks but smaller
-    'MAX_THREADS': 2,  # Match server's vCPU count
-    'MEMORY_LIMIT': '512M'  # Limit memory usage per FFmpeg process
+    'MAX_THREADS': 2  # Match server's vCPU count
 }
 
 VISUALIZER_SETTINGS = {
@@ -348,7 +347,6 @@ def process_video_chunk(
             '-shortest',
             '-pix_fmt', 'yuv420p',
             '-threads', str(VIDEO_SETTINGS['MAX_THREADS']),
-            '-memory_limit', VIDEO_SETTINGS['MEMORY_LIMIT'],  # Add memory limit
             output_path
         ]
         
