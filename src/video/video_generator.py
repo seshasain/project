@@ -97,46 +97,47 @@ def get_audio_duration(audio_path: str) -> float:
 
 # Constants
 VIDEO_SETTINGS = {
-    'WIDTH': 426,  # 240p resolution for even faster processing
-    'HEIGHT': 240,
+    'WIDTH': 640,  # 360p resolution for faster processing
+    'HEIGHT': 360,
     'FPS': 24,
-    'CRF': 35,  # Maximum compression
-    'AUDIO_BITRATE': '48k',  # Minimal bitrate
+    'CRF': 30,  # Even lower quality for faster encoding
+    'AUDIO_BITRATE': '64k',  # Minimal bitrate
     'PRESET': 'ultrafast',  # Fastest preset
-    'CHUNK_DURATION': 15,  # Even smaller chunks
-    'MAX_CHUNKS': 40,  # More chunks but smaller
-    'MAX_THREADS': 1  # Single thread to prevent overload
+    'CHUNK_DURATION': 20,  # Even smaller chunks
+    'MAX_CHUNKS': 30,  # More chunks but smaller
+    'MAX_THREADS': 2,  # Match server's vCPU count
+    'MEMORY_LIMIT': '512M'  # Limit memory usage per FFmpeg process
 }
 
 VISUALIZER_SETTINGS = {
-    'SIZE': 200,  # Reduced for 240p
-    'CENTER': 100,
-    'RADIUS': 80,
+    'SIZE': 300,  # Reduced for 360p
+    'CENTER': 150,
+    'RADIUS': 120,
     'WAVE_COLOR': 'white'
 }
 
 DISC_SETTINGS = {
-    'SIZE': 40,  # Reduced size
-    'CENTER': 20,
-    'RADIUS': 15,
+    'SIZE': 60,  # Reduced size
+    'CENTER': 30,
+    'RADIUS': 25,
     'ROTATION_SPEED': 1.0
 }
 
 TEXT_SETTINGS = {
     'FONT': '/System/Library/Fonts/Supplemental/Verdana.ttf',
     'TITLE': {
-        'SIZE': 16,  # Reduced for 240p
-        'Y_POS': 10,
+        'SIZE': 24,  # Reduced for 360p
+        'Y_POS': 15,
         'BOX_BORDER': 1
     },
     'DATE': {
-        'SIZE': 12,
-        'Y_POS': 30,
+        'SIZE': 18,
+        'Y_POS': 45,
         'BOX_BORDER': 1
     },
     'CHANNEL': {
-        'SIZE': 20,
-        'Y_POS': 'h-20',
+        'SIZE': 30,
+        'Y_POS': 'h-25',
         'BOX_BORDER': 1
     }
 }
@@ -327,9 +328,9 @@ def process_video_chunk(
         
         # Construct FFmpeg command with resource limits
         cmd = [
-            'nice', '-n', '19',  # Lowest CPU priority
+            'nice', '-n', '10',  # Lower CPU priority
             'ffmpeg', '-y',
-            '-thread_queue_size', '512',
+            '-thread_queue_size', '512',  # Increase queue size
             '-loop', '1',
             '-i', disc_path,
             '-i', audio_chunk,
@@ -346,6 +347,7 @@ def process_video_chunk(
             '-shortest',
             '-pix_fmt', 'yuv420p',
             '-threads', str(VIDEO_SETTINGS['MAX_THREADS']),
+            '-memory_limit', VIDEO_SETTINGS['MEMORY_LIMIT'],  # Add memory limit
             output_path
         ]
         
@@ -357,7 +359,7 @@ def process_video_chunk(
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             universal_newlines=True,
-            preexec_fn=lambda: os.nice(19)  # Set nice level for child process
+            preexec_fn=lambda: os.nice(10)  # Set nice level for child process
         )
         
         start_time = time.time()
