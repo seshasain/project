@@ -12,6 +12,13 @@ ExecStart=/opt/telugu-automation/venv/bin/python src/scheduler/main_scheduler.py
 Restart=always
 RestartSec=10
 
+# Resource limits
+CPUQuota=150%
+MemoryLimit=4G
+TasksMax=128
+IOWeight=100
+Nice=10
+
 # Security settings
 NoNewPrivileges=yes
 ProtectSystem=full

@@ -97,48 +97,46 @@ def get_audio_duration(audio_path: str) -> float:
 
 # Constants
 VIDEO_SETTINGS = {
-    'WIDTH': 640,  # 360p resolution for faster processing
-    'HEIGHT': 360,
+    'WIDTH': 1280,  # 720p resolution
+    'HEIGHT': 720,
     'FPS': 24,
-    'CRF': 30,  # Even lower quality for faster encoding
-    'AUDIO_BITRATE': '64k',  # Minimal bitrate
-    'PRESET': 'ultrafast',  # Fastest preset
-    'CHUNK_DURATION': 20,  # Even smaller chunks
-    'MAX_CHUNKS': 30,  # More chunks but smaller
-    'MAX_THREADS': 2,  # Match server's vCPU count
-    'MEMORY_LIMIT': '512M'  # Limit memory usage per FFmpeg process
+    'CRF': 23,  # Slightly lower quality but faster encoding
+    'AUDIO_BITRATE': '128k',  # Lower bitrate
+    'PRESET': 'veryfast',  # Much faster encoding
+    'CHUNK_DURATION': 60,  # Smaller chunks (1 minute each)
+    'MAX_CHUNKS': 10  # Allow more chunks but smaller
 }
 
 VISUALIZER_SETTINGS = {
-    'SIZE': 300,  # Reduced for 360p
-    'CENTER': 150,
-    'RADIUS': 120,
+    'SIZE': 600,
+    'CENTER': 300,
+    'RADIUS': 250,
     'WAVE_COLOR': 'white'
 }
 
 DISC_SETTINGS = {
-    'SIZE': 60,  # Reduced size
-    'CENTER': 30,
-    'RADIUS': 25,
-    'ROTATION_SPEED': 1.0
+    'SIZE': 100,  # Reduced from 250 to fit 720p better
+    'CENTER': 50,  # Adjusted center point (SIZE/2)
+    'RADIUS': 45,  # Reduced radius to make black border thinner
+    'ROTATION_SPEED': 1.0  # Kept same rotation speed
 }
 
 TEXT_SETTINGS = {
     'FONT': '/System/Library/Fonts/Supplemental/Verdana.ttf',
     'TITLE': {
-        'SIZE': 24,  # Reduced for 360p
-        'Y_POS': 15,
-        'BOX_BORDER': 1
+        'SIZE': 48,  # Reduced from 60 for 720p
+        'Y_POS': 30,  # Adjusted position
+        'BOX_BORDER': 2  # Reduced border thickness
     },
     'DATE': {
-        'SIZE': 18,
-        'Y_POS': 45,
-        'BOX_BORDER': 1
+        'SIZE': 36,  # Reduced from 42 for 720p
+        'Y_POS': 80,  # Adjusted position
+        'BOX_BORDER': 4  # Reduced border thickness
     },
     'CHANNEL': {
-        'SIZE': 30,
-        'Y_POS': 'h-25',
-        'BOX_BORDER': 1
+        'SIZE': 60,  # Reduced from 36 for 720p
+        'Y_POS': 'h-40',  # Adjusted position from bottom
+        'BOX_BORDER': 4  # Reduced border thickness
     }
 }
 
@@ -320,6 +318,9 @@ def process_video_chunk(
             logger.error(f"Disc image not found at {disc_path}")
             return False
             
+        # Add nice level to reduce CPU priority
+        os.nice(10)
+        
         # Create filter chain
         logger.info("Creating filter chain...")
         filter_chain = create_filter_chain(serial_name, duration)
@@ -346,8 +347,7 @@ def process_video_chunk(
             '-b:a', VIDEO_SETTINGS['AUDIO_BITRATE'],
             '-shortest',
             '-pix_fmt', 'yuv420p',
-            '-threads', str(VIDEO_SETTINGS['MAX_THREADS']),
-            '-memory_limit', VIDEO_SETTINGS['MEMORY_LIMIT'],  # Add memory limit
+            '-threads', '1',  # Limit to one thread
             output_path
         ]
         
