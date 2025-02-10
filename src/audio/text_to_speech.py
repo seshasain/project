@@ -16,7 +16,7 @@ logging.basicConfig(
 )
 
 # Set the environment variable for Google Cloud credentials
-os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = os.path.join('config', 'credentials', 'socials-1731059809421-d72ce9e99bc2.json')
+os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = os.path.join('config', 'credentials', 'socials-1731059809421-acd5f79c7acb.json')
 
 def synthesize_text(text, client, voice, audio_config):
     """Convert text to speech using Google Cloud TTS"""
