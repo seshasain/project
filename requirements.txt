@@ -27,3 +27,5 @@ psutil>=5.9.0    # For system monitoring
 # Logging and Monitoring
 structlog>=24.1.0
 python-json-logger>=2.0.7
+
+google-cloud-texttospeech
